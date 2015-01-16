@@ -23,8 +23,7 @@ class Main {
     private rotation: THREE.Vector3 = new THREE.Vector3();
     private palette: THREE.Texture;
 
-    private directional_light: THREE.DirectionalLight;
-    private point_light: THREE.PointLight;
+    private light: THREE.PointLight;
 
     private dat: dat.GUI;
     private rotation_enabled: boolean = true;
@@ -98,7 +97,7 @@ class Main {
     }
 
     private setup_shader(): void {
-        THREE.ShaderLib['lambert'].uniforms = THREE.UniformsUtils.merge([
+        THREE.ShaderLib['phong'].uniforms = THREE.UniformsUtils.merge([
             THREE.UniformsLib["common"],
             THREE.UniformsLib["fog"],
             THREE.UniformsLib["lights"],
@@ -139,8 +138,8 @@ class Main {
                 "}"
             ].join("\n");
 
-        var closingBraceIdx = THREE.ShaderLib['lambert'].fragmentShader.lastIndexOf("}");
-        THREE.ShaderLib['lambert'].fragmentShader = uniforms.concat(THREE.ShaderLib['lambert'].fragmentShader.substr(0, closingBraceIdx - 1)).concat(toon);
+        var closingBraceIdx = THREE.ShaderLib['phong'].fragmentShader.lastIndexOf("}");
+        THREE.ShaderLib['phong'].fragmentShader = uniforms.concat(THREE.ShaderLib['phong'].fragmentShader.substr(0, closingBraceIdx - 1)).concat(toon);
     }
 
     private create(): void {
@@ -190,12 +189,12 @@ class Main {
     private populate_scene = (): void => {
         var loader = new THREE.JSONLoader(true);
 
-        this.directional_light = new THREE.DirectionalLight(0xffffff, 2);
-        this.directional_light.position.set(0, 0, 0).normalize();
-        this.directional_light.position.multiplyScalar(250);
-        this.scene.add(this.directional_light);
+        this.light = new THREE.PointLight(0xffffff, 10);
+        this.light.position.set(0, 0, 0).normalize();
+        this.light.position.multiplyScalar(250);
+        this.scene.add(this.light);
 
-        var helper = new THREE.DirectionalLightHelper(this.directional_light, 150);
+        var helper = new THREE.PointLightHelper(this.light, 150);
         this.scene.add(helper);
 
         loader.load("assets/models/city.js", this.on_model_loaded);
@@ -209,6 +208,7 @@ class Main {
                 color: 0xffffff,
                 ambient: 0xffffff,
                 emissive: 0xffffff,
+
                 wrapAround: false,
                 wrapRGB: new THREE.Vector3(1, 1, 1),
                 map: null,
@@ -224,9 +224,9 @@ class Main {
                 morphTargets: false,
                 morphNormals: false,
                 shading: THREE.SmoothShading,
-                uniforms: THREE.ShaderLib['lambert'].uniforms,
-                vertexShader: THREE.ShaderLib['lambert'].vertexShader,
-                fragmentShader: THREE.ShaderLib['lambert'].fragmentShader,
+                uniforms: THREE.ShaderLib['phong'].uniforms,
+                vertexShader: THREE.ShaderLib['phong'].vertexShader,
+                fragmentShader: THREE.ShaderLib['phong'].fragmentShader,
                 attributes: {}
         }));
 
@@ -244,7 +244,7 @@ class Main {
         texture.magFilter = THREE.NearestFilter;
         texture.flipY = false;
 
-        THREE.ShaderLib["lambert"].uniforms["palette"].value = texture;
+        THREE.ShaderLib["phong"].uniforms["palette"].value = texture;
     }
 
     private on_additional_palette_loaded = (): void => {
@@ -329,8 +329,8 @@ class Main {
         this.camera.position.x = 800 * Math.sin(THREE.Math.degToRad(this.rotation.y));
         this.camera.position.z = 800 * Math.cos(THREE.Math.degToRad(this.rotation.y));
 
-        this.directional_light.position.set(this.light_x, this.light_y, this.light_z);
-        this.directional_light.lookAt(this.camera_target);
+        this.light.position.set(this.light_x, this.light_y, this.light_z);
+        this.light.lookAt(this.camera_target);
 
         this.update_input();
 
