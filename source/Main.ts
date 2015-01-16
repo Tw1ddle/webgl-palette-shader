@@ -32,7 +32,10 @@ class Main {
 
     private light_x: number = 0;
     private light_y: number = 350;
-    private light_z: number = 0;
+    private light_z: number = -200;
+
+    private light_tween: TWEEN.Tween;
+    private light_tweening_enabled: boolean = false;
 
     private texture_change_controller: dat.GUIController;
 
@@ -73,9 +76,25 @@ class Main {
         this.dat = new dat.GUI();
         this.dat.add(this, "rotation_enabled", true);
         this.dat.add(this, "rotation_speed", 2, 15);
-        this.dat.add(this, "light_x", -200, 300);
-        this.dat.add(this, "light_y",  200, 400);
-        this.dat.add(this, "light_z", -200, 200);
+        this.dat.add(this, "light_tweening_enabled", false).onChange(this.on_light_tween_enabled_change);
+        this.dat.add(this, "light_x", -200, 300).listen();
+        this.dat.add(this, "light_y",  200, 400).listen();
+        this.dat.add(this, "light_z", -200, 200).listen();
+    }
+
+    private on_light_tween_enabled_change = (value: boolean): void => {
+        if (value == true) {
+            this.light_z = -200;
+            this.light_tween = new TWEEN.Tween(this).to({ light_z: 200 }, 8000).easing(TWEEN.Easing.Sinusoidal.InOut).yoyo(true).repeat(Infinity).start().onUpdate(this.on_light_tween_update);
+        }
+        else {
+            TWEEN.remove(this.light_tween);
+        }
+    }
+
+    private on_light_tween_update = (value:number): void => {
+        this.current_palette = Math.round(value * this.num_palettes);
+        this.on_palette_change(this.current_palette);
     }
 
     private setup_shader(): void {
@@ -211,7 +230,7 @@ class Main {
                 attributes: {}
         }));
 
-        this.model.scale.set(350.5, 350.5, 350.5);
+        this.model.scale.set(350, 350, 350);
         this.model.material.needsUpdate = true;
 
         this.scene.add(this.model);
@@ -240,7 +259,7 @@ class Main {
         this._palettes_loaded = palettes;
 
         if (this._palettes_loaded == this.num_palettes) {
-            this.texture_change_controller = this.dat.add(this, "current_palette", 0, this.num_palettes);
+            this.texture_change_controller = this.dat.add(this, "current_palette", 0, this.num_palettes).listen();
             this.texture_change_controller.onChange(this.on_palette_change);
         }
     }
