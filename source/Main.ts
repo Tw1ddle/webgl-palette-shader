@@ -20,7 +20,6 @@ class Main {
     private renderer_size: THREE.Vector2;
 
     private model: THREE.Mesh;
-    private animation: THREE.MorphAnimation;
     private rotation: THREE.Vector3 = new THREE.Vector3();
     private palette: THREE.Texture;
 
@@ -29,11 +28,17 @@ class Main {
 
     private dat: dat.GUI;
     private rotation_enabled: boolean = true;
-    private rotation_speed: number = 30;
+    private rotation_speed: number = 2;
 
     private light_x: number = 0;
     private light_y: number = 350;
     private light_z: number = 0;
+
+    private texture_change_controller: dat.GUIController;
+
+    private num_palettes: number = 10;
+    private _palettes_loaded: number = 0;
+    private current_palette: number = 0;
 
     constructor () {
         this.create();
@@ -67,10 +72,10 @@ class Main {
     private setup_options(): void {
         this.dat = new dat.GUI();
         this.dat.add(this, "rotation_enabled", true);
-        this.dat.add(this, "rotation_speed", 5, 50);
-        this.dat.add(this, "light_x", -1000, 1000);
-        this.dat.add(this, "light_y", -1000, 1000);
-        this.dat.add(this, "light_z", -1000, 1000);
+        this.dat.add(this, "rotation_speed", 2, 15);
+        this.dat.add(this, "light_x", -200, 300);
+        this.dat.add(this, "light_y",  200, 400);
+        this.dat.add(this, "light_z", -200, 200);
     }
 
     private setup_shader(): void {
@@ -129,28 +134,35 @@ class Main {
 
             if (webgl_support === WebGLSupport.SUPPORTED_AND_ENABLED) {
                 this.create_webgl_scene();
+
+                this.camera_target = new THREE.Vector3(0, 150, 0);
+                this.camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 10000);
+                this.camera.position.y = 800;
+
+                this.scene = new THREE.Scene();
+                this.populate_scene();
+                this.setup_shader();
+
+                this.palette = THREE.ImageUtils.loadTexture("assets/images/palette0.png", new THREE.UVMapping(), this.on_texture_loaded);
+                for (var i = 1; i <= this.num_palettes; i++) {
+                    THREE.ImageUtils.loadTexture("assets/images/palette" + i.toString() + ".png", new THREE.UVMapping(), this.on_additional_palette_loaded);
+                }
+
+                var container = document.createElement('div');
+                document.body.appendChild(container);
+                var info = document.createElement('div');
+                info.style.position = 'absolute';
+                info.style.top = '20px';
+                info.style.width = '100%';
+                info.style.textAlign = 'center';
+                info.style.color = 'white';
+                info.innerHTML = 'single pass palette <a href="http://samcodes.co.uk/" target="_blank">shader</a>. model is chiba city blues by <a href="http://www.cs.columbia.edu/~keenan/Projects/ModelRepository/">keenan crane</a>.';
+                container.appendChild(info);
+
+                this.setup_options();
             } else {
                 this.create_canvas_scene();
             }
-
-            this.scene = new THREE.Scene();
-            this.populate_scene();
-            this.setup_shader();
-
-            this.palette = THREE.ImageUtils.loadTexture("assets/images/palette.png", new THREE.UVMapping(), this.on_texture_loaded);
-
-            var container = document.createElement('div');
-            document.body.appendChild(container);
-            var info = document.createElement('div');
-            info.style.position = 'absolute';
-            info.style.top = '10px';
-            info.style.width = '100%';
-            info.style.textAlign = 'center';
-            info.style.color = 'white';
-            info.innerHTML = 'shader <a href="http://samcodes.co.uk/" target="_blank">single pass heatmap/toon shader</a>. model by <a href="http://mirada.com/">mirada</a> from <a href="http://ro.me">rome</a>.';
-            container.appendChild(info);
-
-            this.setup_options();
 
             this.created = true;
         }
@@ -167,11 +179,7 @@ class Main {
         var helper = new THREE.DirectionalLightHelper(this.directional_light, 150);
         this.scene.add(helper);
 
-        //var dirlight = new THREE.DirectionalLight(0x222222, 2);
-        //dirlight.position.set(-0.5, -1, -1).normalize();
-        //this.scene.add(dirlight);
-
-        loader.load("assets/models/horse.js", this.on_model_loaded);
+        loader.load("assets/models/city.js", this.on_model_loaded);
     }
 
     private on_model_loaded = (geometry:THREE.Geometry): void => {
@@ -194,7 +202,7 @@ class Main {
                 combine: THREE.MultiplyOperation,
                 vertexColors: THREE.NoColors,
                 wireframe: false,
-                morphTargets: true,
+                morphTargets: false,
                 morphNormals: false,
                 shading: THREE.SmoothShading,
                 uniforms: THREE.ShaderLib['lambert'].uniforms,
@@ -203,12 +211,10 @@ class Main {
                 attributes: {}
         }));
 
-        this.model.scale.set(1.5, 1.5, 1.5);
+        this.model.scale.set(350.5, 350.5, 350.5);
         this.model.material.needsUpdate = true;
 
         this.scene.add(this.model);
-        this.animation = new THREE.MorphAnimation(this.model);
-        this.animation.play();
     }
 
     private on_texture_loaded = (texture: THREE.Texture): void => {
@@ -220,8 +226,28 @@ class Main {
         texture.flipY = false;
 
         THREE.ShaderLib["lambert"].uniforms["palette"].value = texture;
+    }
 
-        console.log(THREE.ShaderLib["lambert"].fragmentShader);
+    private on_additional_palette_loaded = (): void => {
+        this.palettes_loaded = this.palettes_loaded + 1;
+    }
+
+    private get palettes_loaded(): number {
+        return this._palettes_loaded;
+    }
+
+    private set palettes_loaded(palettes: number) {
+        this._palettes_loaded = palettes;
+
+        if (this._palettes_loaded == this.num_palettes) {
+            this.texture_change_controller = this.dat.add(this, "current_palette", 0, this.num_palettes);
+            this.texture_change_controller.onChange(this.on_palette_change);
+        }
+    }
+
+    private on_palette_change = (value: number): void => {
+        var palette_value = Math.round(value);
+        THREE.ImageUtils.loadTexture("assets/images/palette" + palette_value.toString() + ".png", new THREE.UVMapping(), this.on_texture_loaded);
     }
 
     private create_webgl_scene(): void {
@@ -240,10 +266,6 @@ class Main {
         var right: number = this.renderer_size.x;
         var top: number = this.renderer_size.y;
         var bottom: number = 0;
-
-        this.camera_target = new THREE.Vector3(0, 150, 0);
-        this.camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 1, 10000);
-        this.camera.position.y = 800;
 
         this.raycaster = new THREE.Raycaster();
         this.input_ray = new THREE.Vector3();
@@ -279,10 +301,6 @@ class Main {
 
     private update(dt : number) : void {
         this.updatestats.begin();
-
-        if (this.animation != null) {
-            this.animation.update(dt * 1000);
-        }
 
         if (this.rotation_enabled) {
             this.rotation.setY(this.rotation.y + dt * this.rotation_speed);
@@ -332,11 +350,6 @@ class Main {
     }
 
     private on_mouse_move = (event: MouseEvent): void => {
-        //this.directional_light.position.set(event.clientX / this.renderer_size.x, -event.clientY / this.renderer_size.y, 1).normalize();
-
-        //console.log(this.directional_light.position.x);
-        //console.log(this.directional_light.position.y);
-
         this.pointer_position.set(event.clientX, event.clientY);
     }
 
