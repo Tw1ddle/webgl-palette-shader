@@ -1,0 +1,104 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\TypeScript\Microsoft.TypeScript.Default.props" Condition="Exists('$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\TypeScript\Microsoft.TypeScript.Default.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <ProjectGuid>{F8D3D1C0-14F5-4A35-9525-DA3BE74A9971}</ProjectGuid>
+    <ProjectTypeGuids>{349c5851-65df-11da-9384-00065b846f21};{fae04ec0-301f-11d3-bf4b-00c04f79efbc}</ProjectTypeGuids>
+    <OutputType>Library</OutputType>
+    <OutputPath>bin</OutputPath>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <DebugType>full</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+    <TypeScriptToolsVersion>1.1</TypeScriptToolsVersion>
+    <UseIISExpress>true</UseIISExpress>
+    <IISExpressSSLPort />
+    <IISExpressAnonymousAuthentication />
+    <IISExpressWindowsAuthentication />
+    <IISExpressUseClassicPipelineMode />
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Include="web.config" />
+    <Content Include="www\css\app.css" />
+    <Content Include="www\index.html" />
+    <Content Include="www\jslib\dat\dat.gui.js" />
+    <Content Include="www\jslib\dat\dat.gui.min.js" />
+    <Content Include="www\jslib\stats\stats.js" />
+    <Content Include="www\jslib\stats\stats.min.js" />
+    <Content Include="www\jslib\three\three.js" />
+    <Content Include="www\jslib\three\three.min.js" />
+    <Content Include="www\jslib\tween\tween.js" />
+    <Content Include="www\jslib\tween\tween.min.js" />
+    <Content Include="www\js\.gitignore" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="web.Debug.config">
+      <DependentUpon>web.config</DependentUpon>
+    </None>
+    <None Include="web.Release.config">
+      <DependentUpon>web.config</DependentUpon>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="www\assets\models\" />
+  </ItemGroup>
+  <ItemGroup>
+    <TypeScriptCompile Include="source\Main.ts" />
+    <TypeScriptCompile Include="source\WebGLDetector.ts" />
+    <TypeScriptCompile Include="tslib\datgui\dat-gui.d.ts" />
+    <TypeScriptCompile Include="tslib\stats\stats.d.ts" />
+    <TypeScriptCompile Include="tslib\three\detector.d.ts" />
+    <TypeScriptCompile Include="tslib\three\three-canvasrenderer.d.ts" />
+    <TypeScriptCompile Include="tslib\three\three-copyshader.d.ts" />
+    <TypeScriptCompile Include="tslib\three\three-css3drenderer.d.ts" />
+    <TypeScriptCompile Include="tslib\three\three-effectcomposer.d.ts" />
+    <TypeScriptCompile Include="tslib\three\three-maskpass.d.ts" />
+    <TypeScriptCompile Include="tslib\three\three-orbitcontrols.d.ts" />
+    <TypeScriptCompile Include="tslib\three\three-projector.d.ts" />
+    <TypeScriptCompile Include="tslib\three\three-renderpass.d.ts" />
+    <TypeScriptCompile Include="tslib\three\three-shaderpass.d.ts" />
+    <TypeScriptCompile Include="tslib\three\three-trackballcontrols.d.ts" />
+    <TypeScriptCompile Include="tslib\three\three.d.ts" />
+    <TypeScriptCompile Include="tslib\touch\touchevent.d.ts" />
+    <TypeScriptCompile Include="tslib\tween\tween.js.d.ts" />
+  </ItemGroup>
+  <PropertyGroup>
+    <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">12.0</VisualStudioVersion>
+  </PropertyGroup>
+  <PropertyGroup>
+    <RootNamespace>webgl_toonshader</RootNamespace>
+  </PropertyGroup>
+  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+  <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\WebApplications\Microsoft.WebApplication.targets" Condition="Exists('$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\WebApplications\Microsoft.WebApplication.targets')" />
+  <ProjectExtensions>
+    <VisualStudio>
+      <FlavorProperties GUID="{349c5851-65df-11da-9384-00065b846f21}">
+        <WebProjectProperties>
+          <UseIIS>True</UseIIS>
+          <AutoAssignPort>True</AutoAssignPort>
+          <DevelopmentServerPort>18149</DevelopmentServerPort>
+          <DevelopmentServerVPath>/</DevelopmentServerVPath>
+          <IISUrl>http://localhost:4356/</IISUrl>
+          <NTLMAuthentication>False</NTLMAuthentication>
+          <UseCustomServer>False</UseCustomServer>
+          <CustomServerUrl>
+          </CustomServerUrl>
+          <SaveServerSettingsInUserFile>False</SaveServerSettingsInUserFile>
+        </WebProjectProperties>
+      </FlavorProperties>
+    </VisualStudio>
+  </ProjectExtensions>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <TypeScriptRemoveComments>false</TypeScriptRemoveComments>
+    <TypeScriptSourceMap>true</TypeScriptSourceMap>
+    <TypeScriptOutFile>app.js</TypeScriptOutFile>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <TypeScriptRemoveComments>true</TypeScriptRemoveComments>
+    <TypeScriptSourceMap>false</TypeScriptSourceMap>
+  </PropertyGroup>
+  <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\TypeScript\Microsoft.TypeScript.targets" Condition="Exists('$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\TypeScript\Microsoft.TypeScript.targets')" />
+  <PropertyGroup>
+    <PostBuildEvent>MOVE /Y "$(ProjectDir)\app.js" "$(ProjectDir)www\js"</PostBuildEvent>
+  </PropertyGroup>
+</Project>
