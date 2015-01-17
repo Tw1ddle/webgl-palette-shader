@@ -85,6 +85,7 @@ class Main {
         this.dat = new dat.GUI();
         this.dat.add(this, "enable_bloom", false);
         var camera = this.dat.addFolder("camera");
+        camera.add(this.camera, "zoom", 0.5, 5).onChange(this.on_camera_zoom_change);
         camera.add(this, "rotation_enabled", true);
         camera.add(this, "rotation_speed", 2, 15);
         var lighting = this.dat.addFolder("lighting");
@@ -383,6 +384,10 @@ class Main {
 
     private on_light_intensity_change = (value: number): void => {
         this.light.intensity = value;
+    }
+
+    private on_camera_zoom_change = (value: number): void => {
+        this.camera.updateProjectionMatrix();
     }
 
     private render(dt : number) : void {
