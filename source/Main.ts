@@ -43,10 +43,12 @@ class Main {
     private light_y: number = 200;
     private light_z: number = -300;
 
-    private palette_change_controller: dat.GUIController;
+    private palette_index_change_controller: dat.GUIController;
+    private palette_name_change_controller: dat.GUIController;
     private num_palettes: number = 10;
     private _palettes_loaded: number = 0;
     private current_palette: number = 0;
+    private palette_name: string = "heatmap";
 
     private palettes: Array<string> = ["heatmap", "sunrise_at_sea", "skyline", "purple", "peachy", "city_stone", "translucent_yellow", "translucent_alien", "red_sunset", "solid_gold", "gray"];
 
@@ -327,14 +329,21 @@ class Main {
         this._palettes_loaded = palettes;
 
         if (this._palettes_loaded == this.num_palettes) {
-            this.palette_change_controller = this.dat.add(this, "current_palette", 0, this.num_palettes).listen();
-            this.palette_change_controller.onChange(this.on_palette_change);
+            this.palette_index_change_controller = this.dat.add(this, "current_palette", 0, this.num_palettes).listen();
+            this.palette_index_change_controller.onChange(this.on_palette_index_change);
+
+            this.palette_name_change_controller = this.dat.add(this, "palette_name", this.palettes).listen();
+            this.palette_name_change_controller.onChange(this.on_palette_name_change);
         }
     }
 
-    private on_palette_change = (value: number): void => {
+    private on_palette_index_change = (value: number): void => {
         var palette_index = Math.round(value);
         THREE.ImageUtils.loadTexture("assets/images/" + this.palettes[palette_index] + ".png", THREE.Texture.DEFAULT_MAPPING, this.on_texture_loaded);
+    }
+
+    private on_palette_name_change = (name: string): void => {
+        THREE.ImageUtils.loadTexture("assets/images/" + name + ".png", THREE.Texture.DEFAULT_MAPPING, this.on_texture_loaded);
     }
 
     private on_light_tween_enabled_change = (value: boolean): void => {
