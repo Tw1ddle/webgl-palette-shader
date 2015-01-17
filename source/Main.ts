@@ -24,17 +24,15 @@ class Main {
     private pointer_position: THREE.Vector2;
 
     private model: THREE.Mesh;
-    private rotation: THREE.Vector3 = new THREE.Vector3();
     private palette: THREE.Texture;
-
-    private rotation_enabled: boolean = true;
-    private rotation_speed: number = 2;
 
     private show_light: boolean = true;
     private light_helper: THREE.DirectionalLightHelper;
     private light_texture: THREE.Texture;
     private light_sprite: THREE.Sprite;
     private light: THREE.DirectionalLight;
+
+    private orbit_controls: THREE.OrbitControls;
 
     private enable_bloom: boolean = false;
     private effect_composer: THREE.EffectComposer; // Used for bloom effect
@@ -46,6 +44,7 @@ class Main {
     private light_y: number = 200;
     private light_z: number = -300;
     private intensity: number = 1.1;
+    private mouse_down: boolean = false;
 
     private palette_index_change_controller: dat.GUIController;
     private palette_name_change_controller: dat.GUIController;
@@ -84,10 +83,6 @@ class Main {
     private setup_options(): void {
         this.dat = new dat.GUI();
         this.dat.add(this, "enable_bloom", false);
-        var camera = this.dat.addFolder("camera");
-        camera.add(this.camera, "zoom", 0.5, 5).onChange(this.on_camera_zoom_change);
-        camera.add(this, "rotation_enabled", true);
-        camera.add(this, "rotation_speed", 2, 15);
         var lighting = this.dat.addFolder("lighting");
         lighting.add(this, "light_tweening_enabled", true).onChange(this.on_light_tween_enabled_change);
         lighting.add(this, "show_light", true).onChange(this.on_show_light_change);
@@ -113,9 +108,15 @@ class Main {
                 this.scene = new THREE.Scene();
                 this.camera_target = new THREE.Vector3(0, 150, 0);
                 this.camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 10000);
+                this.camera.position.x = 800 * Math.sin(THREE.Math.degToRad(0));
+                this.camera.position.z = 800 * Math.cos(THREE.Math.degToRad(0));
                 this.camera.position.y = 800;
 
                 this.create_webgl_scene();
+
+                this.orbit_controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+                this.orbit_controls.maxDistance = 2000;
+                this.orbit_controls.minDistance = 400;
 
                 this.populate_scene();
                 this.setup_shader();
@@ -405,13 +406,7 @@ class Main {
     private update(dt : number) : void {
         this.updatestats.begin();
 
-        if (this.rotation_enabled) {
-            this.rotation.setY(this.rotation.y + dt * this.rotation_speed);
-        }
-
         this.camera.lookAt(this.camera_target);
-        this.camera.position.x = 800 * Math.sin(THREE.Math.degToRad(this.rotation.y));
-        this.camera.position.z = 800 * Math.cos(THREE.Math.degToRad(this.rotation.y));
 
         this.light.position.set(this.light_x, this.light_y, this.light_z);
         this.light.lookAt(this.camera_target);
@@ -449,6 +444,8 @@ class Main {
             return;
         }
 
+        this.mouse_down = true;
+
         this.pointer_position.set(event.clientX, event.clientY);
 
         this.input_ray.set((event.clientX / this.renderer_size.x) * 2 - 1, -(event.clientY / this.renderer_size.y) * 2 + 1, -1.0);
@@ -459,12 +456,17 @@ class Main {
 
     private on_mouse_move = (event: MouseEvent): void => {
         this.pointer_position.set(event.clientX, event.clientY);
+
+        if (this.mouse_down == true) {
+        }
     }
 
     private on_mouse_up = (event: MouseEvent): void => {
         if (event.which !== 1) {
             return;
         }
+
+        this.mouse_down = false;
         
         this.pointer_position.set(event.clientX, event.clientY);
     }
