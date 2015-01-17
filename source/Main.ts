@@ -48,6 +48,8 @@ class Main {
     private _palettes_loaded: number = 0;
     private current_palette: number = 0;
 
+    private palettes: Array<string> = ["heatmap", "sunrise_at_sea", "skyline", "purple", "peachy", "city_stone", "translucent_yellow", "translucent_alien", "red_sunset", "solid_gold", "gray"];
+
     constructor () {
         this.create();
 
@@ -109,9 +111,9 @@ class Main {
                 this.populate_scene();
                 this.setup_shader();
 
-                this.palette = THREE.ImageUtils.loadTexture("assets/images/palette0.png", THREE.Texture.DEFAULT_MAPPING, this.on_texture_loaded, this.on_texture_loaded_error);
+                this.palette = THREE.ImageUtils.loadTexture("assets/images/" + this.palettes[0] + ".png", THREE.Texture.DEFAULT_MAPPING, this.on_texture_loaded, this.on_texture_loaded_error);
                 for (var i = 1; i <= this.num_palettes; i++) {
-                    THREE.ImageUtils.loadTexture("assets/images/palette" + i.toString() + ".png", THREE.Texture.DEFAULT_MAPPING, this.on_additional_palette_loaded, this.on_texture_loaded_error);
+                    THREE.ImageUtils.loadTexture("assets/images/" + this.palettes[i].toString() + ".png", THREE.Texture.DEFAULT_MAPPING, this.on_additional_palette_loaded, this.on_texture_loaded_error);
                 }
 
                 var container = document.createElement('div');
@@ -331,8 +333,8 @@ class Main {
     }
 
     private on_palette_change = (value: number): void => {
-        var palette_value = Math.round(value);
-        THREE.ImageUtils.loadTexture("assets/images/palette" + palette_value.toString() + ".png", THREE.Texture.DEFAULT_MAPPING, this.on_texture_loaded);
+        var palette_index = Math.round(value);
+        THREE.ImageUtils.loadTexture("assets/images/" + this.palettes[palette_index] + ".png", THREE.Texture.DEFAULT_MAPPING, this.on_texture_loaded);
     }
 
     private on_light_tween_enabled_change = (value: boolean): void => {
