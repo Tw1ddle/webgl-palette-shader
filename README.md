@@ -4,7 +4,7 @@ This is a single pass palette shader demo made using TypeScript, WebGL and three
 
 ### Building ###
 
-This is written in TypeScript, so I recommend using the latest version of Visual Studio (2015 preview) with integrated ts support. All the required libraries and type definitions are included in the ```jslib``` and ```tslib``` folders. The ```common``` submodule is currently unused except for icons used on my personal website.
+For building I recommend the latest version of Visual Studio (2015 preview) with integrated TypeScript support. All libraries and type definitions are included in the ```jslib``` and ```tslib``` folders. The ```common``` submodule is currently unused except for icons used on my personal website.
 
 ### Screenshots ###
 
@@ -13,7 +13,3 @@ Single-pass, phong shading with extra indexing into a texture for the palette sh
 ![](screenshots/palette1.png?raw=true)
 
 ![](screenshots/palette2.png?raw=true)
-
-With extra bloom pass:
-
-![](screenshots/bloom1.png?raw=true)
