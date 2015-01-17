@@ -3,51 +3,47 @@ module THREE {
 }
 
 class Main {
-    private renderstats: Stats = new Stats();
-    private updatestats: Stats = new Stats();
-
     private main_loop_clock: THREE.Clock;
     private renderer: THREE.Renderer;
+    private renderstats: Stats = new Stats();
+    private updatestats: Stats = new Stats();
+    private dat: dat.GUI;
+    private renderer_size: THREE.Vector2;
+
     private created: boolean = false;
+    private will_animate: boolean = false;
 
     private scene: THREE.Scene;
     private camera: THREE.PerspectiveCamera;
+    private camera_target: THREE.Vector3;
 
     private raycaster: THREE.Raycaster;
     private input_ray: THREE.Vector3;
     private input_dir: THREE.Vector3;
-
-    private camera_target: THREE.Vector3;
-
     private pointer_position: THREE.Vector2;
-
-    private renderer_size: THREE.Vector2;
 
     private model: THREE.Mesh;
     private rotation: THREE.Vector3 = new THREE.Vector3();
     private palette: THREE.Texture;
 
+    private rotation_enabled: boolean = true;
+    private rotation_speed: number = 2;
+
     private show_light: boolean = true;
     private light_helper: THREE.DirectionalLightHelper;
     private light: THREE.DirectionalLight;
 
-    private enable_bloom: boolean = true;
+    private enable_bloom: boolean = false;
     private effect_composer: THREE.EffectComposer; // Used for bloom effect
     private render_target: THREE.WebGLRenderTarget;
 
-    private dat: dat.GUI;
-    private rotation_enabled: boolean = true;
-    private rotation_speed: number = 2;
-
+    private light_tween: TWEEN.Tween;
+    private light_tweening_enabled: boolean = true;
     private light_x: number = 200;
     private light_y: number = 200;
     private light_z: number = -300;
 
-    private light_tween: TWEEN.Tween;
-    private light_tweening_enabled: boolean = true;
-
-    private texture_change_controller: dat.GUIController;
-
+    private palette_change_controller: dat.GUIController;
     private num_palettes: number = 10;
     private _palettes_loaded: number = 0;
     private current_palette: number = 0;
@@ -55,6 +51,16 @@ class Main {
     constructor () {
         this.create();
 
+        if (this.will_animate) {
+
+            this.setup_stats();
+            this.setup_options();
+
+            this.animate();
+        }
+    }
+
+    private setup_stats(): void {
         this.renderstats.setMode(1);
         this.renderstats.domElement.style.position = 'absolute';
         this.renderstats.domElement.style.left = '0px';
@@ -66,54 +72,132 @@ class Main {
         this.updatestats.domElement.style.left = '0px';
         this.updatestats.domElement.style.top = '100px';
         document.body.appendChild(this.updatestats.domElement);
-
-        this.animate();
-    }
-
-    private get_footer_height(): number {
-        var footer = <any>document.getElementsByClassName('footer_top_holder')[0];
-
-        if (footer == null) {
-            console.log("could not get footer height!");
-            return 0;
-        }
-
-        return footer.clientHeight;
     }
 
     private setup_options(): void {
         this.dat = new dat.GUI();
-        this.dat.add(this, "rotation_enabled", true);
-        this.dat.add(this, "rotation_speed", 2, 15);
-        this.dat.add(this, "enable_bloom", true);
-        this.dat.add(this, "light_tweening_enabled", true).onChange(this.on_light_tween_enabled_change);
-        this.dat.add(this, "show_light", true).onChange(this.on_show_light_change);
-        this.dat.add(this, "light_x", -200, 300).listen();
-        this.dat.add(this, "light_y",  200, 400).listen();
-        this.dat.add(this, "light_z", -300, 300).listen();
+        this.dat.add(this, "enable_bloom", false);
+        var camera = this.dat.addFolder("camera");
+        camera.add(this, "rotation_enabled", true);
+        camera.add(this, "rotation_speed", 2, 15);
+        var lighting = this.dat.addFolder("lighting");
+        lighting.add(this, "light_tweening_enabled", true).onChange(this.on_light_tween_enabled_change);
+        lighting.add(this, "show_light", true).onChange(this.on_show_light_change);
+        lighting.add(this, "light_x", -200, 300).listen();
+        lighting.add(this, "light_y",  200, 400).listen();
+        lighting.add(this, "light_z", -300, 300).listen();
+
+        lighting.open();
     }
 
-    private on_light_tween_enabled_change = (value: boolean): void => {
-        this.tween_light(value);
-    }
+    private create(): void {
+        if (!this.created) {
+            this.main_loop_clock = new THREE.Clock(true);
 
-    private tween_light(value: boolean): void {
-        if (value == true) {
-            this.light_z = -300;
-            this.light_tween = new TWEEN.Tween(this).to({ light_z: 300 }, 8000).easing(TWEEN.Easing.Sinusoidal.InOut).yoyo(true).repeat(Infinity).start().onUpdate(this.on_light_tween_update);
+            this.renderer_size = new THREE.Vector2(window.innerWidth, window.innerHeight - this.get_footer_height());
+
+            var webgl_support = WebGLDetector.detect();
+
+            if (webgl_support === WebGLSupport.SUPPORTED_AND_ENABLED) {
+                this.scene = new THREE.Scene();
+                this.camera_target = new THREE.Vector3(0, 150, 0);
+                this.camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 10000);
+                this.camera.position.y = 800;
+
+                this.create_webgl_scene();
+
+                this.populate_scene();
+                this.setup_shader();
+
+                this.palette = THREE.ImageUtils.loadTexture("assets/images/palette0.png", THREE.Texture.DEFAULT_MAPPING, this.on_texture_loaded, this.on_texture_loaded_error);
+                for (var i = 1; i <= this.num_palettes; i++) {
+                    THREE.ImageUtils.loadTexture("assets/images/palette" + i.toString() + ".png", THREE.Texture.DEFAULT_MAPPING, this.on_additional_palette_loaded, this.on_texture_loaded_error);
+                }
+
+                var container = document.createElement('div');
+                document.body.appendChild(container);
+                var info = document.createElement('div');
+                info.style.position = 'absolute';
+                info.style.top = '20px';
+                info.style.width = '100%';
+                info.style.textAlign = 'center';
+                info.style.color = 'white';
+                info.innerHTML = '<a href="https://github.com/Tw1ddle/webgl-palette-shader/" target="_blank">palette shader</a> by samcodes. model by <a href="http://www.cs.columbia.edu/~keenan/Projects/ModelRepository/" target="_blank">keenan crane</a>.';
+                container.appendChild(info);
+
+                this.will_animate = true;
+            } else {
+                this.create_canvas_scene();
+                this.will_animate = false;
+            }
+
+            this.created = true;
         }
-        else {
-            TWEEN.remove(this.light_tween);
-        }
     }
 
-    private on_show_light_change = (value: boolean): void => {
-        this.light_helper.visible = value;
+    private create_webgl_scene(): void {
+        var gl_renderer: THREE.WebGLRenderer = new THREE.WebGLRenderer({ antialias: true });
+        gl_renderer.setSize(this.renderer_size.x, this.renderer_size.y + 1);
+        gl_renderer.autoClear = true;
+        gl_renderer.gammaInput = true;
+        gl_renderer.gammaOutput = true;
+        gl_renderer.setClearColor(new THREE.Color(0, 0, 0));
+        this.renderer = gl_renderer;
+
+        var left: number = 0;
+        var right: number = this.renderer_size.x;
+        var top: number = this.renderer_size.y;
+        var bottom: number = 0;
+
+        this.render_target = new THREE.WebGLRenderTarget(right - left, top - bottom, {
+            minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat, stencilBuffer: true
+        });
+        this.effect_composer = new THREE.EffectComposer(gl_renderer, this.render_target);
+
+        var renderPass = new THREE.RenderPass(this.scene, this.camera);
+        var bloomEffect = new THREE.BloomPass(1.5, 25, 4, 512);
+        bloomEffect.renderTargetX.format = THREE.RGBAFormat;
+        bloomEffect.renderTargetY.format = THREE.RGBAFormat;
+        var copyPass = new THREE.ShaderPass(THREE.CopyShader);
+        copyPass.renderToScreen = true;
+
+        this.effect_composer.addPass(renderPass);
+        this.effect_composer.addPass(bloomEffect);
+        this.effect_composer.addPass(copyPass);
+
+        this.raycaster = new THREE.Raycaster();
+        this.input_ray = new THREE.Vector3();
+        this.input_dir = new THREE.Vector3();
+
+        this.pointer_position = new THREE.Vector2(9999, 9999);
+
+        var div = document.getElementById("background");
+        div.appendChild(this.renderer.domElement);
+
+        window.addEventListener('resize', this.on_window_resize, false);
+
+        document.addEventListener('contextmenu', this.on_context_menu, false);
+        this.renderer.domElement.addEventListener('mousedown', this.on_mouse_down, false);
+        this.renderer.domElement.addEventListener('mousemove', this.on_mouse_move, false);
+        this.renderer.domElement.addEventListener('mouseup', this.on_mouse_up, false);
     }
 
-    private on_light_tween_update = (value:number): void => {
-        //this.current_palette = Math.round(value * this.num_palettes);
-        //this.on_palette_change(this.current_palette);
+    private create_canvas_scene(): void {
+        var div = document.getElementById("background");
+
+        var container = document.createElement('div');
+        document.body.appendChild(container);
+        var info = document.createElement('div');
+        info.style.position = 'absolute';
+        info.style.top = '20px';
+        info.style.width = '100%';
+        info.style.textAlign = 'center';
+        info.style.color = 'white';
+
+        info.innerHTML = '<a href="https://github.com/Tw1ddle/webgl-palette-shader/" target="_blank">Sorry, this page requires WebGL. Click here to view screenshots and code instead</a>.';
+        container.appendChild(info);
+
+        div.appendChild(container);
     }
 
     private setup_shader(): void {
@@ -152,7 +236,7 @@ class Main {
                 "float luminance = 0.2126 * gl_FragColor.r + 0.7152 * gl_FragColor.g + 0.0722 * gl_FragColor.b;",
                 "float slotIndex = ((luminance - luminanceMin) / luminanceRange);",
                 "vec4 baseColor = gl_FragColor;",
-                //"gl_FragColor = mix(baseColor, texture2D(palette, vec2(slotIndex, 0.5)), 0.9);",
+            //"gl_FragColor = mix(baseColor, texture2D(palette, vec2(slotIndex, 0.5)), 0.9);",
                 "gl_FragColor = texture2D(palette, vec2(slotIndex, 0.5));", // Could use a single texture for all palettes and have a uniform to tell the shader which row/column to use for switching palettes
                 "",
                 "}"
@@ -160,50 +244,6 @@ class Main {
 
         var closingBraceIdx = THREE.ShaderLib['phong'].fragmentShader.lastIndexOf("}");
         THREE.ShaderLib['phong'].fragmentShader = uniforms.concat(THREE.ShaderLib['phong'].fragmentShader.substr(0, closingBraceIdx - 1)).concat(toon);
-    }
-
-    private create(): void {
-        if (!this.created) {
-            this.main_loop_clock = new THREE.Clock(true);
-
-            this.renderer_size = new THREE.Vector2(window.innerWidth, window.innerHeight - this.get_footer_height());
-
-            var webgl_support = WebGLDetector.detect();
-
-            if (webgl_support === WebGLSupport.SUPPORTED_AND_ENABLED) {
-                this.scene = new THREE.Scene();
-                this.camera_target = new THREE.Vector3(0, 150, 0);
-                this.camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 10000);
-                this.camera.position.y = 800;
-
-                this.create_webgl_scene();
-
-                this.populate_scene();
-                this.setup_shader();
-
-                this.palette = THREE.ImageUtils.loadTexture("assets/images/palette0.png", THREE.Texture.DEFAULT_MAPPING, this.on_texture_loaded, this.on_texture_loaded_error);
-                for (var i = 1; i <= this.num_palettes; i++) {
-                    THREE.ImageUtils.loadTexture("assets/images/palette" + i.toString() + ".png", THREE.Texture.DEFAULT_MAPPING, this.on_additional_palette_loaded, this.on_texture_loaded_error);
-                }
-
-                var container = document.createElement('div');
-                document.body.appendChild(container);
-                var info = document.createElement('div');
-                info.style.position = 'absolute';
-                info.style.top = '20px';
-                info.style.width = '100%';
-                info.style.textAlign = 'center';
-                info.style.color = 'white';
-                info.innerHTML = 'palette <a href="http://samcodes.co.uk/" target="_blank">shader</a>. model by <a href="http://www.cs.columbia.edu/~keenan/Projects/ModelRepository/">keenan crane</a>.';
-                container.appendChild(info);
-
-                this.setup_options();
-            } else {
-                this.create_canvas_scene();
-            }
-
-            this.created = true;
-        }
     }
 
     private populate_scene = (): void => {
@@ -285,8 +325,8 @@ class Main {
         this._palettes_loaded = palettes;
 
         if (this._palettes_loaded == this.num_palettes) {
-            this.texture_change_controller = this.dat.add(this, "current_palette", 0, this.num_palettes).listen();
-            this.texture_change_controller.onChange(this.on_palette_change);
+            this.palette_change_controller = this.dat.add(this, "current_palette", 0, this.num_palettes).listen();
+            this.palette_change_controller.onChange(this.on_palette_change);
         }
     }
 
@@ -295,61 +335,22 @@ class Main {
         THREE.ImageUtils.loadTexture("assets/images/palette" + palette_value.toString() + ".png", THREE.Texture.DEFAULT_MAPPING, this.on_texture_loaded);
     }
 
-    private create_webgl_scene(): void {
-        var gl_renderer: THREE.WebGLRenderer = new THREE.WebGLRenderer({ antialias: true });
-        gl_renderer.setSize(this.renderer_size.x, this.renderer_size.y + 1);
-        gl_renderer.autoClear = true;
-        gl_renderer.gammaInput = true;
-        gl_renderer.gammaOutput = true;
-        gl_renderer.setClearColor(new THREE.Color(0, 0, 0));
-        this.renderer = gl_renderer;
-
-        var left: number = 0;
-        var right: number = this.renderer_size.x;
-        var top: number = this.renderer_size.y;
-        var bottom: number = 0;
-
-        this.render_target = new THREE.WebGLRenderTarget(right - left, top - bottom, {
-            minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat, stencilBuffer: true
-        });
-        this.effect_composer = new THREE.EffectComposer(gl_renderer, this.render_target);
-
-        var renderPass = new THREE.RenderPass(this.scene, this.camera);
-        var bloomEffect = new THREE.BloomPass(1.5, 25, 4, 512);
-        bloomEffect.renderTargetX.format = THREE.RGBAFormat;
-        bloomEffect.renderTargetY.format = THREE.RGBAFormat;
-        var copyPass = new THREE.ShaderPass(THREE.CopyShader);
-        copyPass.renderToScreen = true;
-
-        this.effect_composer.addPass(renderPass);
-        this.effect_composer.addPass(bloomEffect);
-        this.effect_composer.addPass(copyPass);
-
-        this.raycaster = new THREE.Raycaster();
-        this.input_ray = new THREE.Vector3();
-        this.input_dir = new THREE.Vector3();
-
-        this.pointer_position = new THREE.Vector2(9999, 9999);
-
-        var div = document.getElementById("background");
-        div.appendChild(this.renderer.domElement);
-
-        window.addEventListener('resize', this.on_window_resize, false);
-
-        document.addEventListener('contextmenu', this.on_context_menu, false);
-        this.renderer.domElement.addEventListener('mousedown', this.on_mouse_down, false);
-        this.renderer.domElement.addEventListener('mousemove', this.on_mouse_move, false);
-        this.renderer.domElement.addEventListener('mouseup', this.on_mouse_up, false);
+    private on_light_tween_enabled_change = (value: boolean): void => {
+        this.tween_light(value);
     }
 
-    private create_canvas_scene(): void {
-        var div = document.getElementById("background");
+    private tween_light(value: boolean): void {
+        if (value == true) {
+            this.light_z = -300;
+            this.light_tween = new TWEEN.Tween(this).to({ light_z: 300 }, 8000).easing(TWEEN.Easing.Sinusoidal.InOut).yoyo(true).repeat(Infinity).start();
+        }
+        else {
+            TWEEN.remove(this.light_tween);
+        }
+    }
 
-        var p = document.createElement("p");
-        var node = document.createTextNode("This site requires WebGL");
-        p.appendChild(node);
-
-        div.appendChild(p);
+    private on_show_light_change = (value: boolean): void => {
+        this.light_helper.visible = value;
     }
 
     private render(dt : number) : void {
@@ -438,6 +439,17 @@ class Main {
             requestAnimationFrame(_cb);
         }
         _cb(this);
+    }
+
+    private get_footer_height(): number {
+        var footer = <any>document.getElementsByClassName('footer_top_holder')[0];
+
+        if (footer == null) {
+            console.log("could not get footer height!");
+            return 0;
+        }
+
+        return footer.clientHeight;
     }
 }
 
