@@ -1,8 +1,6 @@
 # webgl-palette-shader
 
-WORK IN PROGRESS.
-
-TypeScript/WebGL single pass palette shader demo using three.js. You control a directional light and view a model of a city using a range of palettes. Try it out here.
+This is a single pass palette shader demo made using TypeScript, WebGL and three.js. A directional light hovering over a model of a city and lights it up with various colour palettes. Try it out here: http://www.samcodes.co.uk/webgl/palette-shader/
 
 ### Building ###
 
