@@ -135,7 +135,7 @@ class Main {
                 info.style.width = '100%';
                 info.style.textAlign = 'center';
                 info.style.color = 'white';
-                info.innerHTML = '<a href="https://github.com/Tw1ddle/webgl-palette-shader/" target="_blank">palette shader</a> by samcodes. model by <a href="http://www.cs.columbia.edu/~keenan/Projects/ModelRepository/" target="_blank">keenan crane</a>.';
+                info.innerHTML = '<a href="https://github.com/Tw1ddle/webgl-palette-shader/" target="_blank">palette shader</a> by <a href="http://www.samcodes.co.uk/" target="_blank">samcodes</a>. model by <a href="http://www.cs.columbia.edu/~keenan/Projects/ModelRepository/" target="_blank">keenan crane</a>.';
                 container.appendChild(info);
 
                 this.will_animate = true;
