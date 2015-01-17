@@ -1,3 +1,7 @@
+module THREE {
+    export var BloomPass;
+}
+
 class Main {
     private renderstats: Stats = new Stats();
     private updatestats: Stats = new Stats();
@@ -23,7 +27,13 @@ class Main {
     private rotation: THREE.Vector3 = new THREE.Vector3();
     private palette: THREE.Texture;
 
+    private show_light: boolean = true;
+    private light_helper: THREE.DirectionalLightHelper;
     private light: THREE.DirectionalLight;
+
+    private enable_bloom: boolean = true;
+    private effect_composer: THREE.EffectComposer; // Used for bloom effect
+    private render_target: THREE.WebGLRenderTarget;
 
     private dat: dat.GUI;
     private rotation_enabled: boolean = true;
@@ -34,7 +44,7 @@ class Main {
     private light_z: number = -300;
 
     private light_tween: TWEEN.Tween;
-    private light_tweening_enabled: boolean = false;
+    private light_tweening_enabled: boolean = true;
 
     private texture_change_controller: dat.GUIController;
 
@@ -75,13 +85,19 @@ class Main {
         this.dat = new dat.GUI();
         this.dat.add(this, "rotation_enabled", true);
         this.dat.add(this, "rotation_speed", 2, 15);
-        this.dat.add(this, "light_tweening_enabled", false).onChange(this.on_light_tween_enabled_change);
+        this.dat.add(this, "enable_bloom", true);
+        this.dat.add(this, "light_tweening_enabled", true).onChange(this.on_light_tween_enabled_change);
+        this.dat.add(this, "show_light", true).onChange(this.on_show_light_change);
         this.dat.add(this, "light_x", -200, 300).listen();
         this.dat.add(this, "light_y",  200, 400).listen();
         this.dat.add(this, "light_z", -300, 300).listen();
     }
 
     private on_light_tween_enabled_change = (value: boolean): void => {
+        this.tween_light(value);
+    }
+
+    private tween_light(value: boolean): void {
         if (value == true) {
             this.light_z = -300;
             this.light_tween = new TWEEN.Tween(this).to({ light_z: 300 }, 8000).easing(TWEEN.Easing.Sinusoidal.InOut).yoyo(true).repeat(Infinity).start().onUpdate(this.on_light_tween_update);
@@ -89,6 +105,10 @@ class Main {
         else {
             TWEEN.remove(this.light_tween);
         }
+    }
+
+    private on_show_light_change = (value: boolean): void => {
+        this.light_helper.visible = value;
     }
 
     private on_light_tween_update = (value:number): void => {
@@ -151,19 +171,19 @@ class Main {
             var webgl_support = WebGLDetector.detect();
 
             if (webgl_support === WebGLSupport.SUPPORTED_AND_ENABLED) {
-                this.create_webgl_scene();
-
+                this.scene = new THREE.Scene();
                 this.camera_target = new THREE.Vector3(0, 150, 0);
                 this.camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 10000);
                 this.camera.position.y = 800;
 
-                this.scene = new THREE.Scene();
+                this.create_webgl_scene();
+
                 this.populate_scene();
                 this.setup_shader();
 
-                this.palette = THREE.ImageUtils.loadTexture("assets/images/palette0.png", new THREE.UVMapping(), this.on_texture_loaded);
+                this.palette = THREE.ImageUtils.loadTexture("assets/images/palette0.png", THREE.Texture.DEFAULT_MAPPING, this.on_texture_loaded, this.on_texture_loaded_error);
                 for (var i = 1; i <= this.num_palettes; i++) {
-                    THREE.ImageUtils.loadTexture("assets/images/palette" + i.toString() + ".png", new THREE.UVMapping(), this.on_additional_palette_loaded);
+                    THREE.ImageUtils.loadTexture("assets/images/palette" + i.toString() + ".png", THREE.Texture.DEFAULT_MAPPING, this.on_additional_palette_loaded, this.on_texture_loaded_error);
                 }
 
                 var container = document.createElement('div');
@@ -174,7 +194,7 @@ class Main {
                 info.style.width = '100%';
                 info.style.textAlign = 'center';
                 info.style.color = 'white';
-                info.innerHTML = 'single pass palette <a href="http://samcodes.co.uk/" target="_blank">shader</a>. model is chiba city blues by <a href="http://www.cs.columbia.edu/~keenan/Projects/ModelRepository/">keenan crane</a>.';
+                info.innerHTML = 'palette <a href="http://samcodes.co.uk/" target="_blank">shader</a>. model by <a href="http://www.cs.columbia.edu/~keenan/Projects/ModelRepository/">keenan crane</a>.';
                 container.appendChild(info);
 
                 this.setup_options();
@@ -194,8 +214,10 @@ class Main {
         this.light.position.multiplyScalar(250);
         this.scene.add(this.light);
 
-        var helper = new THREE.DirectionalLightHelper(this.light, 150);
-        this.scene.add(helper);
+        this.light_helper = new THREE.DirectionalLightHelper(this.light, 150);
+        this.scene.add(this.light_helper);
+
+        this.tween_light(true);
 
         loader.load("assets/models/city.js", this.on_model_loaded);
     }
@@ -251,6 +273,10 @@ class Main {
         this.palettes_loaded = this.palettes_loaded + 1;
     }
 
+    private on_texture_loaded_error = (): void => {
+        console.log("failed to load a texture...");
+    }
+
     private get palettes_loaded(): number {
         return this._palettes_loaded;
     }
@@ -266,11 +292,11 @@ class Main {
 
     private on_palette_change = (value: number): void => {
         var palette_value = Math.round(value);
-        THREE.ImageUtils.loadTexture("assets/images/palette" + palette_value.toString() + ".png", new THREE.UVMapping(), this.on_texture_loaded);
+        THREE.ImageUtils.loadTexture("assets/images/palette" + palette_value.toString() + ".png", THREE.Texture.DEFAULT_MAPPING, this.on_texture_loaded);
     }
 
     private create_webgl_scene(): void {
-        var gl_renderer: THREE.WebGLRenderer = new THREE.WebGLRenderer();
+        var gl_renderer: THREE.WebGLRenderer = new THREE.WebGLRenderer({ antialias: true });
         gl_renderer.setSize(this.renderer_size.x, this.renderer_size.y + 1);
         gl_renderer.autoClear = true;
         gl_renderer.gammaInput = true;
@@ -278,19 +304,35 @@ class Main {
         gl_renderer.setClearColor(new THREE.Color(0, 0, 0));
         this.renderer = gl_renderer;
 
-        var div = document.getElementById("background");
-        div.appendChild(this.renderer.domElement);
-
         var left: number = 0;
         var right: number = this.renderer_size.x;
         var top: number = this.renderer_size.y;
         var bottom: number = 0;
+
+        this.render_target = new THREE.WebGLRenderTarget(right - left, top - bottom, {
+            minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat, stencilBuffer: true
+        });
+        this.effect_composer = new THREE.EffectComposer(gl_renderer, this.render_target);
+
+        var renderPass = new THREE.RenderPass(this.scene, this.camera);
+        var bloomEffect = new THREE.BloomPass(1.5, 25, 4, 512);
+        bloomEffect.renderTargetX.format = THREE.RGBAFormat;
+        bloomEffect.renderTargetY.format = THREE.RGBAFormat;
+        var copyPass = new THREE.ShaderPass(THREE.CopyShader);
+        copyPass.renderToScreen = true;
+
+        this.effect_composer.addPass(renderPass);
+        this.effect_composer.addPass(bloomEffect);
+        this.effect_composer.addPass(copyPass);
 
         this.raycaster = new THREE.Raycaster();
         this.input_ray = new THREE.Vector3();
         this.input_dir = new THREE.Vector3();
 
         this.pointer_position = new THREE.Vector2(9999, 9999);
+
+        var div = document.getElementById("background");
+        div.appendChild(this.renderer.domElement);
 
         window.addEventListener('resize', this.on_window_resize, false);
 
@@ -313,7 +355,11 @@ class Main {
     private render(dt : number) : void {
         this.renderstats.begin();
 
-        this.renderer.render(this.scene, this.camera);
+        if (this.enable_bloom) {
+            this.effect_composer.render(dt);
+        } else {
+            this.renderer.render(this.scene, this.camera);
+        }
 
         this.renderstats.end();
     }
