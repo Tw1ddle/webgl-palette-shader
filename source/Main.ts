@@ -23,15 +23,15 @@ class Main {
     private rotation: THREE.Vector3 = new THREE.Vector3();
     private palette: THREE.Texture;
 
-    private light: THREE.PointLight;
+    private light: THREE.DirectionalLight;
 
     private dat: dat.GUI;
     private rotation_enabled: boolean = true;
     private rotation_speed: number = 2;
 
-    private light_x: number = 0;
-    private light_y: number = 350;
-    private light_z: number = -200;
+    private light_x: number = 200;
+    private light_y: number = 200;
+    private light_z: number = -300;
 
     private light_tween: TWEEN.Tween;
     private light_tweening_enabled: boolean = false;
@@ -78,13 +78,13 @@ class Main {
         this.dat.add(this, "light_tweening_enabled", false).onChange(this.on_light_tween_enabled_change);
         this.dat.add(this, "light_x", -200, 300).listen();
         this.dat.add(this, "light_y",  200, 400).listen();
-        this.dat.add(this, "light_z", -200, 200).listen();
+        this.dat.add(this, "light_z", -300, 300).listen();
     }
 
     private on_light_tween_enabled_change = (value: boolean): void => {
         if (value == true) {
-            this.light_z = -200;
-            this.light_tween = new TWEEN.Tween(this).to({ light_z: 200 }, 8000).easing(TWEEN.Easing.Sinusoidal.InOut).yoyo(true).repeat(Infinity).start().onUpdate(this.on_light_tween_update);
+            this.light_z = -300;
+            this.light_tween = new TWEEN.Tween(this).to({ light_z: 300 }, 8000).easing(TWEEN.Easing.Sinusoidal.InOut).yoyo(true).repeat(Infinity).start().onUpdate(this.on_light_tween_update);
         }
         else {
             TWEEN.remove(this.light_tween);
@@ -92,8 +92,8 @@ class Main {
     }
 
     private on_light_tween_update = (value:number): void => {
-        this.current_palette = Math.round(value * this.num_palettes);
-        this.on_palette_change(this.current_palette);
+        //this.current_palette = Math.round(value * this.num_palettes);
+        //this.on_palette_change(this.current_palette);
     }
 
     private setup_shader(): void {
@@ -133,7 +133,7 @@ class Main {
                 "float slotIndex = ((luminance - luminanceMin) / luminanceRange);",
                 "vec4 baseColor = gl_FragColor;",
                 //"gl_FragColor = mix(baseColor, texture2D(palette, vec2(slotIndex, 0.5)), 0.9);",
-                "gl_FragColor = texture2D(palette, vec2(slotIndex, 0.5));",
+                "gl_FragColor = texture2D(palette, vec2(slotIndex, 0.5));", // Could use a single texture for all palettes and have a uniform to tell the shader which row/column to use for switching palettes
                 "",
                 "}"
             ].join("\n");
@@ -189,12 +189,12 @@ class Main {
     private populate_scene = (): void => {
         var loader = new THREE.JSONLoader(true);
 
-        this.light = new THREE.PointLight(0xffffff, 10);
+        this.light = new THREE.DirectionalLight(0xffffff, 1.1);
         this.light.position.set(0, 0, 0).normalize();
         this.light.position.multiplyScalar(250);
         this.scene.add(this.light);
 
-        var helper = new THREE.PointLightHelper(this.light, 150);
+        var helper = new THREE.DirectionalLightHelper(this.light, 150);
         this.scene.add(helper);
 
         loader.load("assets/models/city.js", this.on_model_loaded);
