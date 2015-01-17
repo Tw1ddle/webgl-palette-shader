@@ -8,6 +8,7 @@ class Main {
     private renderstats: Stats = new Stats();
     private updatestats: Stats = new Stats();
     private dat: dat.GUI;
+    private dat_palette_folder: dat.GUI;
     private renderer_size: THREE.Vector2;
 
     private created: boolean = false;
@@ -94,8 +95,10 @@ class Main {
         lighting.add(this, "light_x", -200, 300).listen();
         lighting.add(this, "light_y",  200, 400).listen();
         lighting.add(this, "light_z", -300, 300).listen();
+        this.dat_palette_folder = this.dat.addFolder("palette");
 
         lighting.open();
+        this.dat_palette_folder.open();
     }
 
     private create(): void {
@@ -341,10 +344,10 @@ class Main {
         this._palettes_loaded = palettes;
 
         if (this._palettes_loaded == this.num_palettes) {
-            this.palette_index_change_controller = this.dat.add(this, "current_palette", 0, this.num_palettes).listen();
+            this.palette_index_change_controller = this.dat_palette_folder.add(this, "current_palette", 0, this.num_palettes).listen();
             this.palette_index_change_controller.onChange(this.on_palette_index_change);
 
-            this.palette_name_change_controller = this.dat.add(this, "palette_name", this.palettes).listen();
+            this.palette_name_change_controller = this.dat_palette_folder.add(this, "palette_name", this.palettes).listen();
             this.palette_name_change_controller.onChange(this.on_palette_name_change);
         }
     }
