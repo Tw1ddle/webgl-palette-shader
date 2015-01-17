@@ -53,7 +53,6 @@ class Main {
     private _palettes_loaded: number = 0;
     private current_palette: number = 0;
     private palette_name: string = "heatmap";
-
     private palettes: Array<string> = ["heatmap", "sunrise_at_sea", "skyline", "purple", "peachy", "city_stone", "translucent_yellow", "translucent_alien", "red_sunset", "solid_gold", "gray"];
 
     constructor () {
