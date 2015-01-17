@@ -31,6 +31,8 @@ class Main {
 
     private show_light: boolean = true;
     private light_helper: THREE.DirectionalLightHelper;
+    private light_texture: THREE.Texture;
+    private light_sprite: THREE.Sprite;
     private light: THREE.DirectionalLight;
 
     private enable_bloom: boolean = false;
@@ -42,6 +44,7 @@ class Main {
     private light_x: number = 200;
     private light_y: number = 200;
     private light_z: number = -300;
+    private intensity: number = 1.1;
 
     private palette_index_change_controller: dat.GUIController;
     private palette_name_change_controller: dat.GUIController;
@@ -87,6 +90,7 @@ class Main {
         var lighting = this.dat.addFolder("lighting");
         lighting.add(this, "light_tweening_enabled", true).onChange(this.on_light_tween_enabled_change);
         lighting.add(this, "show_light", true).onChange(this.on_show_light_change);
+        lighting.add(this, "intensity", 0.1, 5).onChange(this.on_light_intensity_change);
         lighting.add(this, "light_x", -200, 300).listen();
         lighting.add(this, "light_y",  200, 400).listen();
         lighting.add(this, "light_z", -300, 300).listen();
@@ -112,6 +116,8 @@ class Main {
 
                 this.populate_scene();
                 this.setup_shader();
+
+                this.light_texture = THREE.ImageUtils.loadTexture("assets/images/disc.png", THREE.Texture.DEFAULT_MAPPING, this.on_light_texture_loaded, this.on_texture_loaded_error);
 
                 this.palette = THREE.ImageUtils.loadTexture("assets/images/" + this.palettes[0] + ".png", THREE.Texture.DEFAULT_MAPPING, this.on_texture_loaded, this.on_texture_loaded_error);
                 for (var i = 1; i <= this.num_palettes; i++) {
@@ -159,7 +165,7 @@ class Main {
         this.effect_composer = new THREE.EffectComposer(gl_renderer, this.render_target);
 
         var renderPass = new THREE.RenderPass(this.scene, this.camera);
-        var bloomEffect = new THREE.BloomPass(1.5, 25, 4, 512);
+        var bloomEffect = new THREE.BloomPass(1.2, 25, 4, 512);
         bloomEffect.renderTargetX.format = THREE.RGBAFormat;
         bloomEffect.renderTargetY.format = THREE.RGBAFormat;
         var copyPass = new THREE.ShaderPass(THREE.CopyShader);
@@ -253,12 +259,12 @@ class Main {
     private populate_scene = (): void => {
         var loader = new THREE.JSONLoader(true);
 
-        this.light = new THREE.DirectionalLight(0xffffff, 1.1);
+        this.light = new THREE.DirectionalLight(0xffffff, this.intensity);
         this.light.position.set(0, 0, 0).normalize();
         this.light.position.multiplyScalar(250);
         this.scene.add(this.light);
 
-        this.light_helper = new THREE.DirectionalLightHelper(this.light, 150);
+        this.light_helper = new THREE.DirectionalLightHelper(this.light, 40);
         this.scene.add(this.light_helper);
 
         this.tween_light(true);
@@ -269,31 +275,31 @@ class Main {
     private on_model_loaded = (geometry:THREE.Geometry): void => {
         this.model = new THREE.Mesh(geometry, new THREE.ShaderMaterial(
         {
-                lights: true,
-                transparent: true,
-                color: 0xffffff,
-                ambient: 0xffffff,
-                emissive: 0xffffff,
+            lights: true,
+            transparent: true,
+            color: 0xffffff,
+            ambient: 0xffffff,
+            emissive: 0xffffff,
 
-                wrapAround: false,
-                wrapRGB: new THREE.Vector3(1, 1, 1),
-                map: null,
-                lightMap: null,
-                specularMap: null,
-                normalMap: null,
-                alphaMap: null,
-                envMap: null,
-                bumpMap: null,
-                combine: THREE.MultiplyOperation,
-                vertexColors: THREE.NoColors,
-                wireframe: false,
-                morphTargets: false,
-                morphNormals: false,
-                shading: THREE.SmoothShading,
-                uniforms: THREE.ShaderLib['phong'].uniforms,
-                vertexShader: THREE.ShaderLib['phong'].vertexShader,
-                fragmentShader: THREE.ShaderLib['phong'].fragmentShader,
-                attributes: {}
+            wrapAround: false,
+            wrapRGB: new THREE.Vector3(1, 1, 1),
+            map: null,
+            lightMap: null,
+            specularMap: null,
+            normalMap: null,
+            alphaMap: null,
+            envMap: null,
+            bumpMap: null,
+            combine: THREE.MultiplyOperation,
+            vertexColors: THREE.NoColors,
+            wireframe: false,
+            morphTargets: false,
+            morphNormals: false,
+            shading: THREE.SmoothShading,
+            uniforms: THREE.ShaderLib['phong'].uniforms,
+            vertexShader: THREE.ShaderLib['phong'].vertexShader,
+            fragmentShader: THREE.ShaderLib['phong'].fragmentShader,
+            attributes: {}
         }));
 
         this.model.scale.set(350, 350, 350);
@@ -321,6 +327,12 @@ class Main {
         console.log("failed to load a texture...");
     }
 
+    private on_light_texture_loaded = (): void => {
+        this.light_sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.light_texture, color: 0xffffff, fog: false }));
+        this.light_sprite.scale.set(8, 8, 1);
+        this.scene.add(this.light_sprite);
+    }
+
     private get palettes_loaded(): number {
         return this._palettes_loaded;
     }
@@ -339,10 +351,12 @@ class Main {
 
     private on_palette_index_change = (value: number): void => {
         var palette_index = Math.round(value);
-        THREE.ImageUtils.loadTexture("assets/images/" + this.palettes[palette_index] + ".png", THREE.Texture.DEFAULT_MAPPING, this.on_texture_loaded);
+        this.palette_name = this.palettes[palette_index];
+        THREE.ImageUtils.loadTexture("assets/images/" + this.palette_name + ".png", THREE.Texture.DEFAULT_MAPPING, this.on_texture_loaded);
     }
 
     private on_palette_name_change = (name: string): void => {
+        this.current_palette = this.palettes.indexOf(name);
         THREE.ImageUtils.loadTexture("assets/images/" + name + ".png", THREE.Texture.DEFAULT_MAPPING, this.on_texture_loaded);
     }
 
@@ -362,6 +376,11 @@ class Main {
 
     private on_show_light_change = (value: boolean): void => {
         this.light_helper.visible = value;
+        this.light_sprite.visible = value;
+    }
+
+    private on_light_intensity_change = (value: number): void => {
+        this.light.intensity = value;
     }
 
     private render(dt : number) : void {
@@ -389,6 +408,11 @@ class Main {
 
         this.light.position.set(this.light_x, this.light_y, this.light_z);
         this.light.lookAt(this.camera_target);
+
+        if (this.light_sprite != null) {
+            this.light_sprite.position.set(this.light_x, this.light_y, this.light_z);
+            this.light_sprite.lookAt(this.camera_target);
+        }
 
         this.update_input();
 
