@@ -1,6 +1,8 @@
 # webgl-palette-shader
 
-This is a single pass palette shader demo made using TypeScript, WebGL and three.js. Single-pass phong shading plus indexing into a texture based on fragment luminance for palette shading. A directional light hovering over a model of a city and lights it up with various colour palettes. Try it out here: http://www.samcodes.co.uk/webgl/palette-shader/
+This is a single pass palette shader demo made using TypeScript, WebGL and three.js. It does phong shading on the scene and then indexes into a palette texture based using the fragment luminance for the final colours. The implementation extends the default three.js phong shader to do this.
+
+The demo moves a directional light over a model of a city to showcase the effect. Try it out here: http://www.samcodes.co.uk/webgl/palette-shader/
 
 ### Building ###
 
@@ -8,7 +10,7 @@ For building I recommend the latest version of Visual Studio (2015 preview) with
 
 ### Screenshots ###
 
-Default heatmap palette:
+Heatmap palette:
 
 ![](screenshots/palette1.png?raw=true)
 
