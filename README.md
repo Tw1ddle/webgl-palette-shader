@@ -1,8 +1,12 @@
 # webgl-palette-shader
 
+Deprecation note - this is old code using an early version of TypeScript. It will probably take some work to get building.
+
+![](screenshots/palette_shader.gif)
+
 This is a single pass palette shader demo made using TypeScript, WebGL and three.js. It does phong shading on the scene and then indexes into a palette texture based using the fragment luminance for the final colours. The implementation extends the default three.js phong shader to do this.
 
-The demo moves a directional light over a model of a city to showcase the effect. Try it out here: http://www.samcodes.co.uk/webgl/palette-shader/
+The demo moves a directional light over a model of a city to showcase the effect. Try it out here: https://www.samcodes.co.uk/webgl/palette-shader/
 
 ### Building ###
 
